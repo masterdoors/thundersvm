@@ -41,7 +41,7 @@ extern "C" {
     void sparse_model_scikit(int row_size, float* val, int* row_ptr, int* col_ptr, float* label,
                                   int svm_type, int kernel_type, int degree, float gamma, float coef0,
                                   float cost, float nu, float epsilon, float tol, int probability,
-                                  int weight_size, int* weight_label, float* weight,
+                                  int weight_size, int* weight_label, float* weight, float_type* sample_weights,
                                   int verbose, int max_iter, int n_cores, int max_mem_size,
                                   int gpu_id,
                                   int* n_features, int* n_classes, int* succeed, SvmModel* model){
@@ -62,7 +62,7 @@ extern "C" {
         }
 
         DataSet train_dataset;
-        train_dataset.load_from_sparse(row_size, val, row_ptr, col_ptr, label);
+        train_dataset.load_from_sparse(row_size, val, row_ptr, col_ptr, label, sample_weights);
 //        SvmModel* model;
 //        switch (svm_type){
 //            case SvmParam::C_SVC:
@@ -133,7 +133,7 @@ extern "C" {
         else
             el::Loggers::reconfigureAllLoggers(el::ConfigurationType::Enabled, "false");
         DataSet predict_dataset;
-        predict_dataset.load_from_sparse(row_size, val, row_ptr, col_ptr, (float *)NULL);
+        predict_dataset.load_from_sparse(row_size, val, row_ptr, col_ptr, (float *)NULL,(float_type *)NULL);
         vector<float_type> predict_y;
         predict_y = model->predict(predict_dataset.instances(), -1);
         for (int i = 0; i < predict_y.size(); ++i) {
@@ -145,7 +145,7 @@ extern "C" {
     void dense_model_scikit(int row_size, int features, float* data, float* label,
                                  int svm_type, int kernel_type, int degree, float gamma, float coef0,
                                  float cost, float nu, float epsilon, float tol, int probability,
-                                 int weight_size, int* weight_label, float* weight,
+                                 int weight_size, int* weight_label, float* weight,float_type* sample_weights,
                                  int verbose, int max_iter, int n_cores, int max_mem_size,
                                  int gpu_id,
                                  int* n_features, int* n_classes, int* succeed, SvmModel* model){
@@ -167,7 +167,7 @@ extern "C" {
         }
 
         DataSet train_dataset;
-        train_dataset.load_from_dense(row_size, features, data, label);
+        train_dataset.load_from_dense(row_size, features, data, label,sample_weights);
 //        SvmModel* model;
 //        switch (svm_type){
 //            case SvmParam::C_SVC:
@@ -242,7 +242,7 @@ extern "C" {
         else
             el::Loggers::reconfigureAllLoggers(el::ConfigurationType::Enabled, "false");
         DataSet predict_dataset;
-        predict_dataset.load_from_dense(row_size, features, data, (float*) NULL);
+        predict_dataset.load_from_dense(row_size, features, data, (float*) NULL,(float_type*)NULL);
         vector<float_type> predict_y;
         predict_y = model->predict(predict_dataset.instances(), -1);
         for (int i = 0; i < predict_y.size(); ++i) {
@@ -323,7 +323,7 @@ extern "C" {
 
     void sparse_decision(int row_size, float* val, int* row_ptr, int* col_ptr, SvmModel *model, int value_size, float* dec_value){
         DataSet predict_dataset;
-        predict_dataset.load_from_sparse(row_size, val, row_ptr, col_ptr, (float *)NULL);
+        predict_dataset.load_from_sparse(row_size, val, row_ptr, col_ptr, (float *)NULL, (float_type *)NULL);
         model->predict(predict_dataset.instances(), -1);
         SyncArray<float_type> dec_value_array(value_size);
         dec_value_array.copy_from(model->get_dec_value());
@@ -335,7 +335,7 @@ extern "C" {
 
     void dense_decision(int row_size, int features, float* data, SvmModel *model, int value_size, float* dec_value){
         DataSet predict_dataset;
-        predict_dataset.load_from_dense(row_size, features, data, (float*) NULL);
+        predict_dataset.load_from_dense(row_size, features, data, (float*) NULL, (float_type*)NULL);
         model->predict(predict_dataset.instances(), -1);
         //SyncArray<float_type> dec_value_array(value_size);
         //dec_value_array.copy_from(model->get_dec_value());

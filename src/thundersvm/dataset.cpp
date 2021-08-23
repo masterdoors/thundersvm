@@ -41,6 +41,7 @@ void DataSet::load_from_file(string file_name) {
         vector<node2d> instances_thread(nthread);
 
         vector<int> local_feature(nthread, 0);
+
 #pragma omp parallel num_threads(nthread)
         {
             //get working area of this thread
@@ -95,11 +96,16 @@ void DataSet::load_from_file(string file_name) {
             this->instances_.insert(instances_.end(), instances_thread[i].begin(), instances_thread[i].end());
         }
     }
+
+    for (int l=0; l < this->n_instances(); l++){ 
+        weights_.push_back(1);   
+    } 
+
     free(buffer);
     LOG(INFO)<<"#instances = "<<this->n_instances()<<", #features = "<<this->n_features();
 }
 
-void DataSet::load_from_python(float *y, char **x, int len) {
+void DataSet::load_from_python(float *y, char **x, float_type *_weights_, int len) {
     y_.clear();
     instances_.clear();
     total_count_ = 0;
@@ -110,6 +116,9 @@ void DataSet::load_from_python(float *y, char **x, int len) {
         string line = x[i];
         stringstream ss(line);
         y_.push_back(y[i]);
+        if (_weights_ != NULL) 
+            weights_.push_back(_weights_[i]);
+
         instances_.emplace_back();
         string tuple;
         while (ss >> tuple) {
@@ -121,7 +130,7 @@ void DataSet::load_from_python(float *y, char **x, int len) {
     }
 }
 
-void DataSet::load_from_sparse(int row_size, float* val, int* row_ptr, int* col_ptr, float* label) {
+void DataSet::load_from_sparse(int row_size, float* val, int* row_ptr, int* col_ptr, float* label, float_type* _weights_) {
     y_.clear();
     instances_.clear();
     total_count_ = 0;
@@ -131,6 +140,9 @@ void DataSet::load_from_sparse(int row_size, float* val, int* row_ptr, int* col_
         float  v;
         if(label != NULL)
             y_.push_back(label[i]);
+        if (_weights_ != NULL) 
+            weights_.push_back(_weights_[i]); 
+
         instances_.emplace_back();
         for(int i = row_ptr[total_count_]; i < row_ptr[total_count_ + 1]; i++){
             ind = col_ptr[i];
@@ -147,7 +159,7 @@ void DataSet::load_from_sparse(int row_size, float* val, int* row_ptr, int* col_
 
 }
 
-void DataSet::load_from_dense(int row_size, int features, float* data, float* label){
+void DataSet::load_from_dense(int row_size, int features, float* data, float* label, float_type* _weights_){
     y_.clear();
     instances_.clear();
     total_count_ = 0;
@@ -158,6 +170,9 @@ void DataSet::load_from_dense(int row_size, int features, float* data, float* la
         float v;
         if(label != NULL)
             y_.push_back(label[i]);
+        if (_weights_ != NULL) 
+            weights_.push_back(_weights_[i]);
+
         instances_.emplace_back();
         for(int j = 1; j <= features; j++){
             ind = j;
@@ -263,6 +278,22 @@ const DataSet::node2d DataSet::instances(int y_i, int y_j) const {//return insta
     two_class_ins.insert(two_class_ins.end(), j_ins.begin(), j_ins.end());
     return two_class_ins;
 }
+
+const vector<float_type> DataSet::weights(int y_i, int y_j) const{
+    int si = start_[y_i];
+    int ci = count_[y_i];
+    vector<float_type> w;
+    for (int i = si; i < si + ci; ++i) {
+        w.push_back(weights_[perm_[i]]);
+    }
+    si = start_[y_j];
+    ci = count_[y_j];
+    for (int i = si; i < si + ci; ++i) {
+        w.push_back(weights_[perm_[i]]);
+    }
+    return w;
+}
+
 
 const vector<int> DataSet::original_index() const {//index of each instance in the original array
     return perm_;
