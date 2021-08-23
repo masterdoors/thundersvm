@@ -36,13 +36,13 @@ public:
     void load_from_file(string file_name);
 
     ///load dataset from python
-    void load_from_python(float *y, char **x, int len);
+    void load_from_python(float *y, char **x, float_type *_weights_, int len);
 
     ///load from sparse data
-    void load_from_sparse(int row_size, float* val, int* row_ptr, int* col_ptr, float* label);
+    void load_from_sparse(int row_size, float* val, int* row_ptr, int* col_ptr, float* label, float_type *_weights_);
 
     ///load from dense data
-    void load_from_dense(int row_size, int features, float* data, float* label);
+    void load_from_dense(int row_size, int features, float* data, float* label, float_type *_weights_);
 
     ///group instances in same class
     void group_classes(bool classification = true);
@@ -73,6 +73,8 @@ public:
     ///instances of class \f$y_i\f$ and \f$y_j\f$
     const node2d instances(int y_i, int y_j) const;
 
+    const vector<float_type> weights(int y_i, int y_j) const;
+
     ///mapping instance index (after grouped) to the original index (in file)
     const vector<int> original_index() const;
 
@@ -84,6 +86,7 @@ public:
 private:
     vector<float_type> y_;
     node2d instances_;
+    vector<float_type> weights_;
     size_t total_count_;
     size_t n_features_;
     vector<int> start_; //logical start position of each class
