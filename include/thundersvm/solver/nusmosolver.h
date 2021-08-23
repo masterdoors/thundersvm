@@ -17,18 +17,17 @@ public:
 protected:
     float_type
     calculate_rho(const SyncArray<float_type> &f_val, const SyncArray<int> &y, SyncArray<float_type> &alpha,
-                  float_type Cp,
-                  float_type Cn) const override;
+                  const SyncArray<float_type> &weights) const override;
 
     void smo_kernel(const SyncArray<int> &y, SyncArray<float_type> &f_val, SyncArray<float_type> &alpha,
                     SyncArray<float_type> &alpha_diff,
-                    const SyncArray<int> &working_set, float_type Cp, float_type Cn,
+                    const SyncArray<int> &working_set, const SyncArray<float_type> &weights, float_type Cp, float_type Cn,
                     const SyncArray<kernel_type> &k_mat_rows,
                     const SyncArray<kernel_type> &k_mat_diag, int row_len, float_type eps, SyncArray<float_type> &diff,
                     int max_iter) const override;
 
     void select_working_set(vector<int> &ws_indicator, const SyncArray<int> &f_idx2sort, const SyncArray<int> &y,
-                            const SyncArray<float_type> &alpha, float_type Cp, float_type Cn,
+                            const SyncArray<float_type> &alpha, const SyncArray<float_type> &weights,
                             SyncArray<int> &working_set) const override;
 
     void scale_alpha_rho(SyncArray<float_type> &alpha, float_type &rho, float_type r) const;
