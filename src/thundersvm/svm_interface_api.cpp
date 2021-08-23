@@ -179,8 +179,8 @@ extern "C" {
         thundersvm_predict_sub(predict_dataset, parser, model_file_path, output_file_path);
     }
 
-    void load_from_python_interface(float *y, char **x, int len){
-        dataset_python.load_from_python(y, x, len);
+    void load_from_python_interface(float *y, char **x, float_type *weights,int len){
+        dataset_python.load_from_python(y, x, weights, len);
     }
 
     void thundersvm_train_after_parse(char **option, int len, char *file_name){
