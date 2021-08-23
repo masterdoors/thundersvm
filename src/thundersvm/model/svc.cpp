@@ -146,6 +146,13 @@ void SVC::train(const DataSet &dataset, SvmParam param) {
 
 void SVC::train_binary(const DataSet &dataset, int i, int j, SyncArray<float_type> &alpha, float_type &rho) {
     DataSet::node2d ins = dataset.instances(i, j);//get instances of class i and j
+    vector<float_type>  weights_v = dataset.weights(i, j);
+    SyncArray<float_type> weights(ins.size());
+    float_type *w_data = weights.host_data();
+    for (int l = 0; l < ins.size(); ++l) {
+        w_data[l] = weights_v[l];
+    }    
+
     SyncArray<int> y(ins.size());
     alpha.resize(ins.size());
     SyncArray<float_type> f_val(ins.size());
@@ -163,8 +170,9 @@ void SVC::train_binary(const DataSet &dataset, int i, int j, SyncArray<float_typ
     KernelMatrix k_mat(ins, param);
     int ws_size = get_working_set_size(ins.size(), k_mat.n_features());
     CSMOSolver solver;
-    solver.solve(k_mat, y, alpha, rho, f_val, param.epsilon, param.C * c_weight[i], param.C * c_weight[j], ws_size,
-                 max_iter);
+
+    solver.solve(k_mat, y, alpha, rho, f_val, param.epsilon, weights, param.C * c_weight[i], param.C * c_weight[j], ws_size, max_iter);
+
     LOG(INFO) << "rho = " << rho;
     int n_sv = 0;
     y_data = y.host_data();

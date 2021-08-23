@@ -9,6 +9,12 @@ void NuSVC::train_binary(const DataSet &dataset, int i, int j, SyncArray<float_t
     int n_pos = dataset.count()[i];
     int n_neg = dataset.count()[j];
     SyncArray<int> y(ins.size());
+    SyncArray<float_type> w(ins.size());
+    float_type *w_data = w.host_data();
+    for (int l = 0; l < ins.size(); ++l) {
+        w_data[l] = 1;
+    }
+
     alpha.resize(ins.size());
     SyncArray<float_type> f_val(ins.size());
     alpha.mem_set(0);
@@ -32,7 +38,7 @@ void NuSVC::train_binary(const DataSet &dataset, int i, int j, SyncArray<float_t
     KernelMatrix k_mat(ins, param);
     int ws_size = get_working_set_size(ins.size(), k_mat.n_features());
     NuSMOSolver solver(false);
-    solver.solve(k_mat, y, alpha, rho, f_val, param.epsilon, 1, 1, ws_size, max_iter);
+    solver.solve(k_mat, y, alpha, rho, f_val, param.epsilon, w, 1, 1, ws_size, max_iter);
 
     LOG(INFO)<<"rho = "<<rho;
     int n_sv = 0;

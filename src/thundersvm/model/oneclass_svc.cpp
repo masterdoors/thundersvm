@@ -31,8 +31,16 @@ void OneClassSVC::train(const DataSet &dataset, SvmParam param) {
     for (int i = 0; i < n_instances; ++i) {
         y_data[i] = 1;
     }
+
+    SyncArray<float_type> w(n_instances);
+    float_type *w_data = w.host_data();
+    for (int i = 0; i < n_instances; ++i) {
+        w_data[i] = 1;
+    }
+
+
     CSMOSolver solver;
-    solver.solve(kernelMatrix, y, alpha, rho.host_data()[0], f_val, param.epsilon, 1, 1, ws_size, max_iter);
+    solver.solve(kernelMatrix, y, alpha, rho.host_data()[0], f_val, param.epsilon, w, 1, 1, ws_size, max_iter);
 
     //todo these codes are similar to svr, try to combine them
     LOG(INFO) << "rho = " << rho.host_data()[0];

@@ -16,10 +16,14 @@ void NuSVR::train(const DataSet &dataset, SvmParam param) {
 
     SyncArray<float_type> f_val(n_instances * 2);
     SyncArray<int> y(n_instances * 2);
+    SyncArray<float_type> w(n_instances);
+
 
     SyncArray<float_type> alpha_2(n_instances * 2);
     float_type *f_val_data = f_val.host_data();
     int *y_data = y.host_data();
+    float_type *w_data = w.host_data(); 
+
     float_type *alpha_2_data = alpha_2.host_data();
     float_type sum = param.C * param.nu * n_instances / 2;
     for (int i = 0; i < n_instances; ++i) {
@@ -28,11 +32,12 @@ void NuSVR::train(const DataSet &dataset, SvmParam param) {
         f_val_data[i] = f_val_data[i + n_instances] = -dataset.y()[i];
         y_data[i] = +1;
         y_data[i + n_instances] = -1;
+        w_data[i] = param.C;
     }
 
     int ws_size = get_working_set_size(n_instances * 2, kernelMatrix.n_features());
     NuSMOSolver solver(true);
-    solver.solve(kernelMatrix, y, alpha_2, rho.host_data()[0], f_val, param.epsilon, param.C, param.C, ws_size, max_iter);
+    solver.solve(kernelMatrix, y, alpha_2, rho.host_data()[0], f_val, param.epsilon, w, param.C, param.C, ws_size, max_iter);
     save_svr_coef(alpha_2, dataset.instances());
 
     if(param.kernel_type == SvmParam::LINEAR){

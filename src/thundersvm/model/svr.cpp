@@ -21,18 +21,22 @@ void SVR::train(const DataSet &dataset, SvmParam param) {
 
     float_type *f_val_data = f_val.host_data();
     int *y_data = y.host_data();
+    SyncArray<float_type> w(n_instances);
+    float_type *w_data = w.host_data();
+
     for (int i = 0; i < n_instances; ++i) {
         f_val_data[i] = param.p - dataset.y()[i];
         y_data[i] = +1;
         f_val_data[i + n_instances] = -param.p - dataset.y()[i];
         y_data[i + n_instances] = -1;
+        w_data[i] = 1;
     }
 
     SyncArray<float_type> alpha_2(n_instances * 2);
     alpha_2.mem_set(0);
     int ws_size = get_working_set_size(n_instances * 2, kernelMatrix.n_features());
     CSMOSolver solver;
-    solver.solve(kernelMatrix, y, alpha_2, rho.host_data()[0], f_val, param.epsilon, param.C, param.C, ws_size, max_iter);
+    solver.solve(kernelMatrix, y, alpha_2, rho.host_data()[0], f_val, param.epsilon, w, param.C, param.C, ws_size, max_iter);
     save_svr_coef(alpha_2, dataset.instances());
 
     if(param.kernel_type == SvmParam::LINEAR){
