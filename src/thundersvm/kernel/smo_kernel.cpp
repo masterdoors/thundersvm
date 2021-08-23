@@ -11,8 +11,8 @@ namespace svm_kernel {
 
     void c_smo_solve_kernel(const int *label, float_type *f_val, float_type *alpha, float_type *alpha_diff,
                             const int *working_set,
-                            int ws_size,
-                            float_type Cp, float_type Cn, const kernel_type *k_mat_rows, const kernel_type *k_mat_diag,
+                            int ws_size, const float_type *weights,
+                            const kernel_type *k_mat_rows, const kernel_type *k_mat_diag,
                             int row_len,
                             float_type eps,
                             float_type *diff, int max_iter) {
@@ -41,7 +41,7 @@ namespace svm_kernel {
             int i = 0;
             float_type up_value = INFINITY;
             for (int tid = 0; tid < ws_size; ++tid) {
-                if (is_I_up(a[tid], y[tid], Cp, Cn))
+                if (is_I_up(a[tid], y[tid], weights[tid]))
                     if (f[tid] < up_value) {
                         up_value = f[tid];
                         i = tid;
@@ -52,7 +52,7 @@ namespace svm_kernel {
             }
             float_type low_value = -INFINITY;
             for (int tid = 0; tid < ws_size; ++tid) {
-                if (is_I_low(a[tid], y[tid], Cp, Cn))
+                if (is_I_low(a[tid], y[tid], weights[tid]))
                     if (f[tid] > low_value) {
                         low_value = f[tid];
                     }
@@ -78,7 +78,7 @@ namespace svm_kernel {
             float_type min_t = INFINITY;
             //select j2 using second order heuristic
             for (int tid = 0; tid < ws_size; ++tid) {
-                if (-up_value > -f[tid] && (is_I_low(a[tid], y[tid], Cp, Cn))) {
+                if (-up_value > -f[tid] && (is_I_low(a[tid], y[tid], weights[tid]))) {
                     float_type aIJ = kd[i] + kd[tid] - 2 * kIwsI[tid];
                     float_type bIJ = -up_value + f[tid];
                     float_type ft = -bIJ * bIJ / aIJ;
@@ -91,9 +91,9 @@ namespace svm_kernel {
 
             //update alpha
 //            if (tid == i)
-            alpha_i_diff = y[i] > 0 ? Cp - a[i] : a[i];
+            alpha_i_diff = y[i] > 0 ? weights[i] - a[i] : a[i];
 //            if (tid == j2)
-            alpha_j_diff = min(y[j2] > 0 ? a[j2] : Cn - a[j2],
+            alpha_j_diff = min(y[j2] > 0 ? a[j2] : weights[j2] - a[j2],
                     (-up_value + f[j2]) / (kd[i] + kd[j2] - 2 * kIwsI[j2]));
             float_type l = min(alpha_i_diff, alpha_j_diff);
 
@@ -115,12 +115,12 @@ namespace svm_kernel {
 
     void c_smo_solve(const SyncArray<int> &y, SyncArray<float_type> &f_val, SyncArray<float_type> &alpha,
                      SyncArray<float_type> &alpha_diff,
-                     const SyncArray<int> &working_set, float_type Cp, float_type Cn,
+                     const SyncArray<int> &working_set, const SyncArray<float_type> &weights,
                      const SyncArray<kernel_type> &k_mat_rows,
                      const SyncArray<kernel_type> &k_mat_diag, int row_len, float_type eps, SyncArray<float_type> &diff,
                      int max_iter) {
         c_smo_solve_kernel(y.host_data(), f_val.host_data(), alpha.host_data(), alpha_diff.host_data(),
-                           working_set.host_data(), working_set.size(), Cp, Cn, k_mat_rows.host_data(),
+                           working_set.host_data(), working_set.size(), weights.host_data(), k_mat_rows.host_data(),
                            k_mat_diag.host_data(), row_len, eps, diff.host_data(), max_iter);
     }
 
