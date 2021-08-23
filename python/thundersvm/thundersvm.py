@@ -88,7 +88,7 @@ class SvmModel(ThundersvmBase):
         if self.model is not None:
             thundersvm.model_free(c_void_p(self.model))
 
-    def fit(self, X, y):
+    def fit(self, X, y, sample_weights=None):
         if self.model is not None:
             thundersvm.model_free(c_void_p(self.model))
             self.model = None
@@ -114,7 +114,7 @@ class SvmModel(ThundersvmBase):
         self.model = thundersvm.model_new(solver_type)
         if self.max_mem_size != -1:
             thundersvm.set_memory_size(c_void_p(self.model), self.max_mem_size)
-        fit(X, y, solver_type, kernel)
+        fit(X, y, solver_type, kernel,sample_weights)
         if self._train_succeed[0] == -1:
             print("Training failed!")
             return
@@ -162,9 +162,15 @@ class SvmModel(ThundersvmBase):
 
         return self
 
-    def _dense_fit(self, X, y, solver_type, kernel):
+    def _dense_fit(self, X, y, solver_type, kernel, sample_weights):
 
         X = np.asarray(X, dtype=np.float32, order='C')
+        if sample_weights is not None:
+            sample_weights = np.asarray(sample_weights, dtype=np.float32, order='C')
+        else:
+            sample_weights = np.ones((X.shape[0],), dtype=np.float32, order='C')
+
+        sw = sample_weights.ctypes.data_as(POINTER(c_float))
         samples = X.shape[0]
         features = X.shape[1]
         X_1d = X.ravel()
@@ -207,14 +213,20 @@ class SvmModel(ThundersvmBase):
             samples, features, data, label, solver_type,
             kernel_type, self.degree, c_float(self._gamma), c_float(self.coef0),
             c_float(self.C), c_float(self.nu), c_float(self.epsilon), c_float(self.tol),
-            self.probability, weight_size, weight_label, weight,
+            self.probability, weight_size, weight_label, weight,sw,
             self.verbose, self.max_iter, self.n_jobs, self.max_mem_size,
             self.gpu_id,
             n_features, n_classes, self._train_succeed, c_void_p(self.model))
         self.n_features = n_features[0]
         self.n_classes = n_classes[0]
 
-    def _sparse_fit(self, X, y, solver_type, kernel):
+    def _sparse_fit(self, X, y, solver_type, kernel, sample_weights):
+        if sample_weights is not None:
+            sample_weights = np.asarray(sample_weights, dtype=np.float32, order='C')
+        else:
+            sample_weights = np.ones((X.shape[0],), dtype=np.float32, order='C')
+
+        sw = sample_weights.ctypes.data_as(POINTER(c_float))
         X.data = np.asarray(X.data, dtype=np.float32, order='C')
         X.sort_indices()
         kernel_type = kernel
@@ -259,7 +271,7 @@ class SvmModel(ThundersvmBase):
             X.shape[0], data, indptr, indices, label, solver_type,
             kernel_type, self.degree, c_float(self._gamma), c_float(self.coef0),
             c_float(self.C), c_float(self.nu), c_float(self.epsilon), c_float(self.tol),
-            self.probability, weight_size, weight_label, weight,
+            self.probability, weight_size, weight_label, weight,sw,
             self.verbose, self.max_iter, self.n_jobs, self.max_mem_size,
             self.gpu_id,
             n_features, n_classes, self._train_succeed, c_void_p(self.model))
