@@ -10,22 +10,22 @@
 #include <thundersvm/syncarray.h>
 
 namespace svm_kernel {
-    __host__ __device__ inline bool is_I_up(float_type a, float_type y, float_type Cp, float_type Cn) {
-        return (y > 0 && a < Cp) || (y < 0 && a > 0);
+    __host__ __device__ inline bool is_I_up(float_type a, float_type y, float_type weight) {
+        return (y > 0 && a < weight) || (y < 0 && a > 0);
     }
 
-    __host__ __device__ inline bool is_I_low(float_type a, float_type y, float_type Cp, float_type Cn) {
-        return (y > 0 && a > 0) || (y < 0 && a < Cn);
+    __host__ __device__ inline bool is_I_low(float_type a, float_type y, float_type weight) {
+        return (y > 0 && a > 0) || (y < 0 && a < weight);
     }
 
-    __host__ __device__ inline bool is_free(float_type a, float_type y, float_type Cp, float_type Cn) {
-        return a > 0 && (y > 0 ? a < Cp : a < Cn);
+    __host__ __device__ inline bool is_free(float_type a, float_type y, float_type weight) {
+        return a > 0 && (a < weight);
     }
 
     void
     c_smo_solve(const SyncArray<int> &y, SyncArray<float_type> &f_val, SyncArray<float_type> &alpha,
                 SyncArray<float_type> &alpha_diff,
-                const SyncArray<int> &working_set, float_type Cp, float_type Cn,
+                const SyncArray<int> &working_set, const SyncArray<float_type> &weights,
                 const SyncArray<kernel_type> &k_mat_rows,
                 const SyncArray<kernel_type> &k_mat_diag, int row_len, float_type eps, SyncArray<float_type> &diff,
                 int max_iter);
