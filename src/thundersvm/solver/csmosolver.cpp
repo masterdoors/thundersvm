@@ -9,7 +9,7 @@ using namespace svm_kernel;
 
 void
 CSMOSolver::solve(const KernelMatrix &k_mat, const SyncArray<int> &y, SyncArray<float_type> &alpha, float_type &rho,
-                  SyncArray<float_type> &f_val, float_type eps, float_type Cp, float_type Cn, int ws_size,
+                  SyncArray<float_type> &f_val, float_type eps, SyncArray<float_type> &weights, float_type Cp, float_type Cn, int ws_size,
                   int out_max_iter) const {
     int n_instances = k_mat.n_instances();
     int q = ws_size / 2;
@@ -33,6 +33,17 @@ CSMOSolver::solve(const KernelMatrix &k_mat, const SyncArray<int> &y, SyncArray<
     SyncArray<kernel_type> k_mat_rows(ws_size * k_mat.n_instances());
     SyncArray<kernel_type> k_mat_rows_first_half(q * k_mat.n_instances());
     SyncArray<kernel_type> k_mat_rows_last_half(q * k_mat.n_instances());
+    float_type *weights_data = weights.host_data();
+    const int *y_data = y.host_data();
+
+    for (int i = 0; i < n_instances; ++i) {
+        if (y_data[i] > 0){
+            weights_data[i] *= Cp;
+        } else{
+            weights_data[i] *= Cn;
+        }
+    }
+
 #ifdef USE_CUDA
     k_mat_rows_first_half.set_device_data(k_mat_rows.device_data());
     k_mat_rows_last_half.set_device_data(&k_mat_rows.device_data()[q * k_mat.n_instances()]);
@@ -63,7 +74,7 @@ CSMOSolver::solve(const KernelMatrix &k_mat, const SyncArray<int> &y, SyncArray<
         sort_f(f_val2sort, f_idx2sort);
         vector<int> ws_indicator(n_instances, 0);
         if (0 == iter) {
-            select_working_set(ws_indicator, f_idx2sort, y, alpha, Cp, Cn, working_set);
+            select_working_set(ws_indicator, f_idx2sort, y, alpha, weights, working_set);
             k_mat.get_rows(working_set, k_mat_rows);
         } else {
             working_set_first_half.copy_from(working_set_last_half);
@@ -71,13 +82,15 @@ CSMOSolver::solve(const KernelMatrix &k_mat, const SyncArray<int> &y, SyncArray<
             for (int i = 0; i < q; ++i) {
                 ws_indicator[working_set_data[i]] = 1;
             }
-            select_working_set(ws_indicator, f_idx2sort, y, alpha, Cp, Cn, working_set_last_half);
+            select_working_set(ws_indicator, f_idx2sort, y, alpha, weights, working_set_last_half);
             k_mat_rows_first_half.copy_from(k_mat_rows_last_half);
             k_mat.get_rows(working_set_last_half, k_mat_rows_last_half);
         }
+
         //local smo
-        smo_kernel(y, f_val, alpha, alpha_diff, working_set, Cp, Cn, k_mat_rows, k_mat.diag(), n_instances, eps, diff,
+        smo_kernel(y, f_val, alpha, alpha_diff, working_set, weights, Cp, Cn, k_mat_rows, k_mat.diag(), n_instances, eps, diff,
                    max_iter);
+
         //update f
         update_f(f_val, alpha_diff, k_mat_rows, k_mat.n_instances());
         float_type *diff_data = diff.host_data();
@@ -109,7 +122,7 @@ CSMOSolver::solve(const KernelMatrix &k_mat, const SyncArray<int> &y, SyncArray<
         if ((same_local_diff_cnt >= 10 && fabs(diff_data[0] - 2.0) > eps) || diff_data[0] < eps ||
             (out_max_iter != -1) && (iter == out_max_iter) ||
             (swap_local_diff_cnt >= 10 && fabs(diff_data[0] - 2.0) > eps)) {
-            rho = calculate_rho(f_val, y, alpha, Cp, Cn);
+            rho = calculate_rho(f_val, y, alpha, weights);
             LOG(INFO) << "global iter = " << iter << ", total local iter = " << local_iter << ", diff = "
                       << diff_data[0];
             LOG(INFO) << "training finished";
@@ -122,7 +135,7 @@ CSMOSolver::solve(const KernelMatrix &k_mat, const SyncArray<int> &y, SyncArray<
 
 void
 CSMOSolver::select_working_set(vector<int> &ws_indicator, const SyncArray<int> &f_idx2sort, const SyncArray<int> &y,
-                               const SyncArray<float_type> &alpha, float_type Cp, float_type Cn,
+                               const SyncArray<float_type> &alpha, const SyncArray<float_type> &weights,
                                SyncArray<int> &working_set) const {
     int n_instances = ws_indicator.size();
     int p_left = 0;
@@ -132,11 +145,13 @@ CSMOSolver::select_working_set(vector<int> &ws_indicator, const SyncArray<int> &
     const int *y_data = y.host_data();
     const float_type *alpha_data = alpha.host_data();
     int *working_set_data = working_set.host_data();
+    const float_type *weights_data = weights.host_data();
+    int n_selected_old = 0; 
     while (n_selected < working_set.size()) {
         int i;
         if (p_left < n_instances) {
             i = index[p_left];
-            while (ws_indicator[i] == 1 || !is_I_up(alpha_data[i], y_data[i], Cp, Cn)) {
+            while (ws_indicator[i] == 1 || !is_I_up(alpha_data[i], y_data[i], weights_data[i])) {
                 //construct working set of I_up
                 p_left++;
                 if (p_left == n_instances) break;
@@ -149,7 +164,7 @@ CSMOSolver::select_working_set(vector<int> &ws_indicator, const SyncArray<int> &
         }
         if (p_right >= 0) {
             i = index[p_right];
-            while (ws_indicator[i] == 1 || !is_I_low(alpha_data[i], y_data[i], Cp, Cn)) {
+            while (ws_indicator[i] == 1 || !is_I_low(alpha_data[i], y_data[i], weights_data[i])) {
                 //construct working set of I_low
                 p_right--;
                 if (p_right == -1) break;
@@ -160,14 +175,14 @@ CSMOSolver::select_working_set(vector<int> &ws_indicator, const SyncArray<int> &
                 ws_indicator[i] = 1;
             }
         }
-
+       if (n_selected ==  n_selected_old) break;
+       n_selected_old = n_selected;
     }
 }
 
 float_type
 CSMOSolver::calculate_rho(const SyncArray<float_type> &f_val, const SyncArray<int> &y, SyncArray<float_type> &alpha,
-                          float_type Cp,
-                          float_type Cn) const {
+                          const SyncArray<float_type> &weights) const {
     int n_free = 0;
     double sum_free = 0;
     float_type up_value = INFINITY;
@@ -175,13 +190,15 @@ CSMOSolver::calculate_rho(const SyncArray<float_type> &f_val, const SyncArray<in
     const float_type *f_val_data = f_val.host_data();
     const int *y_data = y.host_data();
     float_type *alpha_data = alpha.host_data();
+    const float_type *weights_data = weights.host_data();
+
     for (int i = 0; i < alpha.size(); ++i) {
-        if (is_free(alpha_data[i], y_data[i], Cp, Cn)) {
+        if (is_free(alpha_data[i], y_data[i], weights_data[i])) {
             n_free++;
             sum_free += f_val_data[i];
         }
-        if (is_I_up(alpha_data[i], y_data[i], Cp, Cn)) up_value = min(up_value, f_val_data[i]);
-        if (is_I_low(alpha_data[i], y_data[i], Cp, Cn)) low_value = max(low_value, f_val_data[i]);
+        if (is_I_up(alpha_data[i], y_data[i], weights_data[i])) up_value = min(up_value, f_val_data[i]);
+        if (is_I_low(alpha_data[i], y_data[i], weights_data[i])) low_value = max(low_value, f_val_data[i]);
     }
     return 0 != n_free ? (sum_free / n_free) : (-(up_value + low_value) / 2);
 }
@@ -216,12 +233,12 @@ void CSMOSolver::init_f(const SyncArray<float_type> &alpha, const SyncArray<int>
 void
 CSMOSolver::smo_kernel(const SyncArray<int> &y, SyncArray<float_type> &f_val, SyncArray<float_type> &alpha,
                        SyncArray<float_type> &alpha_diff,
-                       const SyncArray<int> &working_set, float_type Cp, float_type Cn,
+                       const SyncArray<int> &working_set, const SyncArray<float_type> &weights, float_type Cp, float_type Cn,
                        const SyncArray<kernel_type> &k_mat_rows,
                        const SyncArray<kernel_type> &k_mat_diag, int row_len, float_type eps,
                        SyncArray<float_type> &diff,
                        int max_iter) const {
-    c_smo_solve(y, f_val, alpha, alpha_diff, working_set, Cp, Cn, k_mat_rows, k_mat_diag, row_len, eps, diff, max_iter);
+    c_smo_solve(y, f_val, alpha, alpha_diff, working_set, weights, k_mat_rows, k_mat_diag, row_len, eps, diff, max_iter);
 }
 
 float_type CSMOSolver::calculate_obj(const SyncArray<float_type> &f_val, const SyncArray<float_type> &alpha,
