@@ -113,6 +113,9 @@ SvmModel::predict_dec_values(const DataSet::node2d &instances, SyncArray<float_t
         else
             batch_start += batch_size;
     }
+#ifdef USE_CUDA
+    svm_kernel::release_cusparse();
+#endif
 }
 
 vector<float_type> SvmModel::predict(const DataSet::node2d &instances, int batch_size = -1) {
