@@ -132,6 +132,14 @@ namespace svm_kernel {
     cusparseMatDescr_t descr;
     bool cusparse_init;
 
+    void release_cusparse(){
+        if (cusparse_init) {
+            cusparseDestroyMatDescr(descr);
+            cusparseDestroy(handle);
+            cusparse_init = false;
+        }
+    }
+
     void dns_csr_mul(int m, int n, int k, const SyncArray<kernel_type> &dense_mat, const SyncArray<kernel_type> &csr_val,
                      const SyncArray<int> &csr_row_ptr, const SyncArray<int> &csr_col_ind, int nnz,
                      SyncArray<kernel_type> &result) {
