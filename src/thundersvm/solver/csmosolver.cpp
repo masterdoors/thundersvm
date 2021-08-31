@@ -3,6 +3,7 @@
 //
 #include <thundersvm/solver/csmosolver.h>
 #include <thundersvm/kernel/smo_kernel.h>
+#include <thundersvm/kernel/kernelmatrix_kernel.h>
 #include <climits>
 
 using namespace svm_kernel;
@@ -131,6 +132,9 @@ CSMOSolver::solve(const KernelMatrix &k_mat, const SyncArray<int> &y, SyncArray<
             break;
         }
     }
+#ifdef USE_CUDA
+    svm_kernel::release_cusparse();
+#endif
 }
 
 void
