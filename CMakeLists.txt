@@ -26,8 +26,11 @@ endif ()
 
 find_package(Threads)
 find_package(OpenMP REQUIRED)
+find_package(ZLIB REQUIRED)
 add_definitions("-DELPP_NO_LOG_TO_FILE")
 
+
+list(APPEND LINK_LIBRARY ZLIB::ZLIB)
 if (USE_CUDA)
     message("Compile with CUDA")
     find_package(CUDA REQUIRED QUIET)
