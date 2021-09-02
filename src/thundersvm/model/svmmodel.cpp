@@ -5,6 +5,7 @@
 #include <thundersvm/kernel/smo_kernel.h>
 #include <thundersvm/model/svmmodel.h>
 #include <thundersvm/kernel/kernelmatrix_kernel.h>
+#include <thundersvm/util/compressor.h>
 #include <iomanip>
 
 using std::ofstream;
@@ -138,7 +139,7 @@ void SvmModel::save_to_file(string path) {
     ofstream fs_model;
     fs_model.open(path.c_str(), std::ios_base::out | std::ios_base::trunc);
     CHECK(fs_model.is_open()) << "create file " << path << "failed";
-    fs_model << save_to_string();
+    fs_model << compress_string(save_to_string());
     fs_model.close();
 }
 
@@ -225,7 +226,7 @@ void SvmModel::load_from_file(string path) {
 	}
     std::stringstream sstr;
     sstr << ifs.rdbuf();
-    load_from_string(sstr.str());
+    load_from_string(decompress_string(sstr.str()));
     ifs.close();
 }
 
