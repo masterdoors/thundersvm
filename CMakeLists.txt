@@ -30,7 +30,7 @@ find_package(ZLIB REQUIRED)
 add_definitions("-DELPP_NO_LOG_TO_FILE")
 
 
-list(APPEND LINK_LIBRARY ZLIB::ZLIB)
+list(APPEND LINK_LIBRARY ${ZLIB_LIBRARIES})
 if (USE_CUDA)
     message("Compile with CUDA")
     find_package(CUDA REQUIRED QUIET)
