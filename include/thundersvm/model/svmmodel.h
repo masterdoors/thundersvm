@@ -86,6 +86,9 @@ public:
     //return sv
     const DataSet::node2d &svs() const;
 
+    //set sv 
+    void set_sv(DataSet::node2d lsv);
+
     //return n_sv
     const SyncArray<int> &get_n_sv() const;
 

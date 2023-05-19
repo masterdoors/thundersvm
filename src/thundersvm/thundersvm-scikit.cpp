@@ -285,6 +285,27 @@ extern "C" {
         return ;
     }
 
+    void set_sv(int shapei, int* shapej, int* row, int* col, float* data, int* data_size, int* sv_indices,SvmModel* model){
+        DataSet::node2d svs; 
+        row[0] = 0;
+        int data_ind = 0;
+        int col_ind = 0;
+        int row_ind = 1;
+        for(int i = 0; i < shapei; i++){
+            row[row_ind] = row[row_ind - 1] + svs[i].size();
+            row_ind++;
+            svs.push_back(vector<DataSet::node>());
+            for(int j = 0; j < shapej[i]; j++){
+                svs[i].push_back( DataSet::node(col[col_ind], data[data_ind]))  
+                data_ind++;
+                col_ind++;
+            }
+        }
+
+        model->set_sv(svs)   
+        return ;
+    }
+
     void get_support_classes(int* n_support, int n_class, SvmModel* model){
         SyncArray<int> n_sv(n_class);
         n_sv.copy_from(model->get_n_sv());

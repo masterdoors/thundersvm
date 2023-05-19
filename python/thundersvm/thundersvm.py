@@ -125,13 +125,13 @@ class SvmModel(ThundersvmBase):
         data_size = (c_int * 1)()
         sv_indices = (c_int * self.n_sv)()
         thundersvm.get_sv(csr_row, csr_col, csr_data, data_size, sv_indices, c_void_p(self.model))
-        self.row = np.frombuffer(csr_row, dtype=np.int32)
-        self.col = np.frombuffer(csr_col, dtype=np.int32)[:data_size[0]]
-        self.data = np.frombuffer(csr_data, dtype=np.float32)[:data_size[0]]
+        #self.row = np.frombuffer(csr_row, dtype=np.int32)
+        #self.col = np.frombuffer(csr_col, dtype=np.int32)[:data_size[0]]
+        #self.data = np.frombuffer(csr_data, dtype=np.float32)[:data_size[0]]
 
-        self.support_vectors_ = sp.csr_matrix((self.data, self.col, self.row))
-        if not self._sparse:
-            self.support_vectors_ = self.support_vectors_.toarray(order='C')
+        #self.support_vectors_ = sp.csr_matrix((self.data, self.col, self.row))
+        #if not self._sparse:
+        #    self.support_vectors_ = self.support_vectors_.toarray(order='C')
         self.support_ = np.frombuffer(sv_indices, dtype=np.int32).astype(int)
 
         dual_coef = (c_float * ((self.n_classes - 1) * self.n_sv))()
