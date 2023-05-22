@@ -67,7 +67,7 @@ void SVC::train(const DataSet &dataset, SvmParam param) {
         for (int j = 0; j < i_instances.size(); ++j) {
             if (is_sv[original_index[j]]) {
                 n_sv_data[i]++;
-                sv.push_back(i_instances[j]);
+                //sv.push_back(i_instances[j]);
                 sv_indices.push_back(original_index[j]);
             }
         }
@@ -184,9 +184,12 @@ void SVC::train_binary(const DataSet &dataset, int i, int j, SyncArray<float_typ
     LOG(INFO) << "#sv = " << n_sv;
 }
 
-vector<float_type> SVC::predict(const DataSet::node2d &instances, int batch_size) {
+vector<float_type> SVC::predict(const DataSet::node2d &instances, const DataSet::node2d &support_vectors, int batch_size) {
+    set_sv(support_vectors);
     dec_values.resize(instances.size() * n_binary_models);
     predict_dec_values(instances, dec_values, batch_size);
+    sv.clear();
+    sv.shrink_to_fit();
     return predict_label(dec_values, instances.size());
 }
 

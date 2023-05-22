@@ -243,7 +243,7 @@ extern "C" {
         bool do_cross_validation = false;
         if (nr_fold != -1) {
             do_cross_validation = true;
-            predict_y = model->cross_validation(train_dataset, param_cmd, nr_fold);
+           //predict_y = model->cross_validation(train_dataset, param_cmd, nr_fold, train_dataset);
         } else {
             model->train(train_dataset, param_cmd);
             LOG(INFO) << "training finished";
@@ -296,6 +296,7 @@ extern "C" {
         strcpy(model_file_path, model_file[0]);
         strcpy(predict_file_path, test_file[0]);
         strcpy(output_file_path, out_file[0]);
+
         fstream file;
         file.open(model_file_path, std::fstream::in);
         string feature, svm_type;
@@ -326,7 +327,7 @@ extern "C" {
         DataSet predict_dataset;
         predict_dataset.load_from_file(predict_file_path);
         vector<float_type> predict_y;
-        predict_y = model->predict(predict_dataset.instances(), 10000);
+        predict_y = model->predict(predict_dataset.instances(), model->svs(),10000);
         for (int i = 0; i < predict_y.size(); ++i) {
             file << predict_y[i] << std::endl;
         }

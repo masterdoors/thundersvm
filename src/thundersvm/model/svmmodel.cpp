@@ -28,48 +28,6 @@ void SvmModel::model_setup(const DataSet &dataset, SvmParam &param) {
     this->param = param;
 }
 
-vector<float_type> SvmModel::cross_validation(DataSet dataset, SvmParam param, int n_fold) {
-    dataset.group_classes(this->param.svm_type == SvmParam::C_SVC);//group classes only for classification
-
-    vector<float_type> y_predict_all(dataset.n_instances());
-
-    for (int k = 0; k < n_fold; ++k) {
-        LOG(INFO) << n_fold << " fold cross-validation (" << k + 1 << "/" << n_fold << ")";
-        DataSet::node2d x_train, x_test;
-        vector<float_type> y_train, y_test;
-        vector<int> test_idx;
-        for (int i = 0; i < dataset.n_classes(); ++i) {
-            int fold_test_count = dataset.count()[i] / n_fold;
-            vector<int> class_idx = dataset.original_index(i);
-            auto idx_begin = class_idx.begin() + fold_test_count * k;
-            auto idx_end = idx_begin;
-            if (k == n_fold - 1) {
-                idx_end = class_idx.end();
-            } else {
-                while (idx_end != class_idx.end() && idx_end - idx_begin < fold_test_count) idx_end++;
-            }
-            for (int j: vector<int>(idx_begin, idx_end)) {
-                x_test.push_back(dataset.instances()[j]);
-                y_test.push_back(dataset.y()[j]);
-                test_idx.push_back(j);
-            }
-            class_idx.erase(idx_begin, idx_end);
-            for (int j:class_idx) {
-                x_train.push_back(dataset.instances()[j]);
-                y_train.push_back(dataset.y()[j]);
-            }
-        }
-        DataSet train_dataset(x_train, dataset.n_features(), y_train);
-        this->train(train_dataset, param);
-        vector<float_type> y_predict = this->predict(x_test, 1000);
-        CHECK_EQ(y_predict.size(), test_idx.size());
-        for (int i = 0; i < y_predict.size(); ++i) {
-            y_predict_all[test_idx[i]] = y_predict[i];
-        }
-    }
-    return y_predict_all;
-}
-
 
 void
 SvmModel::predict_dec_values(const DataSet::node2d &instances, SyncArray<float_type> &dec_values,
@@ -119,7 +77,8 @@ SvmModel::predict_dec_values(const DataSet::node2d &instances, SyncArray<float_t
 #endif
 }
 
-vector<float_type> SvmModel::predict(const DataSet::node2d &instances, int batch_size = -1) {
+vector<float_type> SvmModel::predict(const DataSet::node2d &instances, const DataSet::node2d &support_vectors, int batch_size = -1) {
+    set_sv(support_vectors);
 //    param.max_mem_size
     dec_values.resize(instances.size() * n_binary_models);
 //    vector<float_type> dec_values_vec(dec_values.size());
@@ -132,6 +91,8 @@ vector<float_type> SvmModel::predict(const DataSet::node2d &instances, int batch
     float_type* dec_values_host = dec_values.host_data();
     vector<float_type> dec_values_vec(dec_values.size());
     memcpy(dec_values_vec.data(), dec_values_host, dec_values.size() * sizeof(float_type));
+    sv.clear();
+    sv.shrink_to_fit();
     return dec_values_vec;
 }
 
@@ -343,7 +304,7 @@ const DataSet::node2d &SvmModel::svs() const {
     return sv;
 }
 
-void DataSet::set_sv(DataSet::node2d lsv){
+void SvmModel::set_sv(DataSet::node2d lsv){
     sv = lsv;
 }
 

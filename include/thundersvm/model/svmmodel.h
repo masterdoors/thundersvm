@@ -30,7 +30,7 @@ public:
      * @param batch_size the number of instances to predict parallel, higher value needs more memory
      * @return label (SVC, NuSVC), real number (SVR, NuSVR), {-1,+1} (OneClassSVC)
      */
-    virtual vector<float_type> predict(const DataSet::node2d &instances, int batch_size);
+    virtual vector<float_type> predict(const DataSet::node2d &instances, const DataSet::node2d &support_vectors, int batch_size);
 
     /**
      * predict decision values.
@@ -39,18 +39,6 @@ public:
      * @param [in] batch_size the number of instances to predict parallel, higher value needs more memory
      */
     void predict_dec_values(const DataSet::node2d &instances, SyncArray<float_type> &dec_values, int batch_size) const;
-
-    /**
-     * performing cross-validation.
-     * In \f$k\f$-fold cross_validation, dataset is spilt into \f$k\f$ equal size parts. Then each part is used as
-     * testing set, while the remaining \f$k-1\f$ parts are used as training set. The whole dataset will be predicted
-     * after \f$k\f$ training and testing.
-     * @param dataset training dataset
-     * @param param param for cross-validation
-     * @param n_fold the number of fold in cross-validation
-     * @return the same structure as predict()
-     */
-    virtual vector<float_type> cross_validation(DataSet dataset, SvmParam param, int n_fold);
 
     /**
      * save SvmModel to a file, the file format is the same as LIBSVM

@@ -47,7 +47,7 @@ void OneClassSVC::train(const DataSet &dataset, SvmParam param) {
     vector<float_type> coef_vec;
     for (int i = 0; i < n_instances; ++i) {
         if (alpha_data[i] != 0) {
-            sv.push_back(dataset.instances()[i]);
+            //sv.push_back(dataset.instances()[i]);
             sv_indices.push_back(i);
             coef_vec.push_back(alpha_data[i]);
         }
@@ -64,8 +64,8 @@ void OneClassSVC::train(const DataSet &dataset, SvmParam param) {
     }
 }
 
-vector<float_type> OneClassSVC::predict(const DataSet::node2d &instances, int batch_size) {
-    vector<float_type> dec_values = SvmModel::predict(instances, batch_size);
+vector<float_type> OneClassSVC::predict(const DataSet::node2d &instances, const DataSet::node2d &support_vectors, int batch_size) {
+    vector<float_type> dec_values = SvmModel::predict(instances, support_vectors, batch_size);
     vector<float_type> predict_y;
     for (int i = 0; i < dec_values.size(); ++i) {
         predict_y.push_back(dec_values[i] > 0 ? 1 : -1);

@@ -60,35 +60,35 @@ extern "C" {
 
         vector<float_type> predict_y, test_y;
         if (parser.do_cross_validation) {
-            predict_y = model->cross_validation(train_dataset, parser.param_cmd, parser.nr_fold);
+            //predict_y = model->cross_validation(train_dataset, parser.param_cmd, parser.nr_fold);
         } else {
             model->train(train_dataset, parser.param_cmd);
             model->save_to_file(model_file_path);
             LOG(INFO) << "evaluating training score";
-            predict_y = model->predict(train_dataset.instances(), -1);
+            //predict_y = model->predict(train_dataset.instances(), -1);
             //predict_y = model->predict(train_dataset.instances(), 10000);
             //test_y = train_dataset.y();
         }
-        Metric *metric = nullptr;
-        switch (parser.param_cmd.svm_type) {
-            case SvmParam::C_SVC:
-            case SvmParam::NU_SVC: {
-                metric = new Accuracy();
-                break;
-            }
-            case SvmParam::EPSILON_SVR:
-            case SvmParam::NU_SVR: {
-                metric = new MSE();
-                break;
-            }
-            case SvmParam::ONE_CLASS: {
-            }
-        }
-        if (metric) {
-            LOG(INFO) << metric->name() << " = " << metric->score(predict_y, train_dataset.y()) << std::endl;
-        }
+        //Metric *metric = nullptr;
+        //switch (parser.param_cmd.svm_type) {
+        //    case SvmParam::C_SVC:
+        //    case SvmParam::NU_SVC: {
+        //        metric = new Accuracy();
+        //        break;
+        //    }
+        //    case SvmParam::EPSILON_SVR:
+        //    case SvmParam::NU_SVR: {
+        //       metric = new MSE();
+        //        break;
+        //    }
+        //    case SvmParam::ONE_CLASS: {
+        //    }
+        //}
+        //if (metric) {
+        //    LOG(INFO) << metric->name() << " = " << metric->score(predict_y, train_dataset.y()) << std::endl;
+        //}
         delete model;
-        delete metric;
+        //delete metric;
         return;
     }
     void thundersvm_train(int argc, char **argv) {
@@ -113,7 +113,7 @@ extern "C" {
         thundersvm_train_sub(train_dataset, parser, model_file_path);
         return;
     }
-    void thundersvm_predict_sub(DataSet& predict_dataset, CMDParser& parser, char* model_file_path, char* output_file_path){
+    void thundersvm_predict_sub(DataSet& predict_dataset, CMDParser& parser, char* model_file_path, char* output_file_path,const DataSet::node2d &support_vectors){
         fstream file;
         file.open(model_file_path, std::fstream::in);
         string feature, svm_type;
@@ -148,7 +148,7 @@ extern "C" {
         file.open(output_file_path, fstream::out);
 
         vector<float_type> predict_y;
-        predict_y = model->predict(predict_dataset.instances(), -1);
+        predict_y = model->predict(predict_dataset.instances(), support_vectors,-1);
         for (int i = 0; i < predict_y.size(); ++i) {
             file << predict_y[i] << std::endl;
         }
@@ -161,29 +161,11 @@ extern "C" {
         delete metric;
     }
 
-    void thundersvm_predict(int argc, char **argv){
-        CMDParser parser;
-        parser.parse_command_line(argc, argv);
-
-        char model_file_path[1024] = DATASET_DIR;
-        char predict_file_path[1024] = DATASET_DIR;
-        char output_file_path[1024] = DATASET_DIR;
-//        strcat(model_file_path, "../python/");
-//        strcat(predict_file_path, "../python/");
-//        strcat(output_file_path, "../python/");
-        strcpy(model_file_path, parser.svmpredict_model_file_name.c_str());
-        strcpy(predict_file_path, parser.svmpredict_input_file.c_str());
-        strcpy(output_file_path, parser.svmpredict_output_file.c_str());
-        DataSet predict_dataset;
-        predict_dataset.load_from_file(predict_file_path);
-        thundersvm_predict_sub(predict_dataset, parser, model_file_path, output_file_path);
-    }
-
     void load_from_python_interface(float *y, char **x, float_type *weights,int len){
         dataset_python.load_from_python(y, x, weights, len);
     }
 
-    void thundersvm_train_after_parse(char **option, int len, char *file_name){
+    void thundersvm_train_after_parse(char **option, int len, char *file_name, const DataSet::node2d &support_vectors){
         CMDParser parser;
         parser.parse_python(len, option);
 	if(!parser.check_parameter()) return;
@@ -192,7 +174,7 @@ extern "C" {
         strcpy(model_file_path, file_name);
         thundersvm_train_sub(dataset_python, parser, model_file_path);
     }
-    void thundersvm_predict_after_parse(char *model_file_name, char *output_file_name, char **option, int len){
+    void thundersvm_predict_after_parse(char *model_file_name, char *output_file_name, char **option, int len,const DataSet::node2d &support_vectors){
         CMDParser parser;
         parser.parse_python(len, option);
         char model_file_path[1024] = DATASET_DIR;
@@ -201,6 +183,6 @@ extern "C" {
 //        strcat(output_file_path, "../python/");
         strcpy(model_file_path, model_file_name);
         strcpy(output_file_path, output_file_name);
-        thundersvm_predict_sub(dataset_python, parser, model_file_path, output_file_path);
+        thundersvm_predict_sub(dataset_python, parser, model_file_path, output_file_path, support_vectors);
     }
 }
