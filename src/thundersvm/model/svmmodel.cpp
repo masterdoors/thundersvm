@@ -308,6 +308,10 @@ void SvmModel::set_sv(DataSet::node2d lsv){
     sv = lsv;
 }
 
+const DataSet::node2d &SvmModel::genSV(int sv_row_size, float* sv_val, int* sv_row_ptr, int* sv_col_ptr) const{
+//TODO
+};
+
 const SyncArray<int> &SvmModel::get_n_sv() const {
     return n_sv;
 }

@@ -127,7 +127,7 @@ extern "C" {
         n_classes[0] = model->get_n_classes();
     }
 
-    int sparse_predict(int row_size, float* val, int* row_ptr, int* col_ptr, SvmModel *model, float* predict_label, int verbose){
+    int sparse_predict(int row_size, float* val, int* row_ptr, int* col_ptr, SvmModel *model, float* predict_label, int sv_row_size, float* sv_val, int* sv_row_ptr, int* sv_col_ptr, int verbose){
         if(verbose)
             el::Loggers::reconfigureAllLoggers(el::ConfigurationType::Enabled, "true");
         else
@@ -135,7 +135,9 @@ extern "C" {
         DataSet predict_dataset;
         predict_dataset.load_from_sparse(row_size, val, row_ptr, col_ptr, (float *)NULL,(float_type *)NULL);
         vector<float_type> predict_y;
-        predict_y = model->predict(predict_dataset.instances(), -1);
+        DataSet::node2d support_vectors = model->genSV(sv_row_size,sv_val, sv_row_ptr,sv_col_ptr);
+
+        predict_y = model->predict(predict_dataset.instances(), support_vectors, -1);
         for (int i = 0; i < predict_y.size(); ++i) {
             predict_label[i] = predict_y[i];
         }
