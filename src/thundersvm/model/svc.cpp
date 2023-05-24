@@ -188,8 +188,7 @@ vector<float_type> SVC::predict(const DataSet::node2d &instances, const DataSet:
     set_sv(support_vectors);
     dec_values.resize(instances.size() * n_binary_models);
     predict_dec_values(instances, dec_values, batch_size);
-    sv.clear();
-    sv.shrink_to_fit();
+    DataSet::node2d().swap(sv);
     return predict_label(dec_values, instances.size());
 }
 

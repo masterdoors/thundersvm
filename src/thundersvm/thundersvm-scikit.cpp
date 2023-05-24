@@ -238,7 +238,7 @@ extern "C" {
 
     }
 
-    int dense_predict(int row_size, int features, float* data, SvmModel *model, float* predict_label, int verbose){
+    int dense_predict(int row_size, int features, float* data, SvmModel *model, float* predict_label, int sv_row_size, float* sv_val, int* sv_row_ptr, int* sv_col_ptr,int verbose){
         if(verbose)
             el::Loggers::reconfigureAllLoggers(el::ConfigurationType::Enabled, "true");
         else
@@ -246,7 +246,8 @@ extern "C" {
         DataSet predict_dataset;
         predict_dataset.load_from_dense(row_size, features, data, (float*) NULL,(float_type*)NULL);
         vector<float_type> predict_y;
-        predict_y = model->predict(predict_dataset.instances(), -1);
+        DataSet::node2d support_vectors = model->genSV(sv_row_size,sv_val, sv_row_ptr,sv_col_ptr);
+        predict_y = model->predict(predict_dataset.instances(), support_vectors, -1);
         for (int i = 0; i < predict_y.size(); ++i) {
             predict_label[i] = predict_y[i];
         }
@@ -287,24 +288,26 @@ extern "C" {
         return ;
     }
 
-    void set_sv(int shapei, int* shapej, int* row, int* col, float* data, int* data_size, int* sv_indices,SvmModel* model){
-        DataSet::node2d svs; 
-        row[0] = 0;
-        int data_ind = 0;
-        int col_ind = 0;
-        int row_ind = 1;
-        for(int i = 0; i < shapei; i++){
-            row[row_ind] = row[row_ind - 1] + svs[i].size();
-            row_ind++;
-            svs.push_back(vector<DataSet::node>());
-            for(int j = 0; j < shapej[i]; j++){
-                svs[i].push_back( DataSet::node(col[col_ind], data[data_ind]))  
-                data_ind++;
-                col_ind++;
-            }
-        }
+    void set_sv(int row_size, int* row_ptr, int* col_ptr, float* val, SvmModel* model){
+        DataSet::node2d instances_; 
+	    instances_.clear();
+	    int total_count_ = 0;
+	    int n_features_ = 0;
+	    for(int i = 0; i < row_size; i++){
+		int ind;
+		float  v;
 
-        model->set_sv(svs)   
+		instances_.emplace_back();
+		for(int i = row_ptr[total_count_]; i < row_ptr[total_count_ + 1]; i++){
+		    ind = col_ptr[i];
+				ind++;			//convert to one-based format
+		    v = val[i];
+		    instances_[total_count_].emplace_back(ind, v);
+		    if(ind > n_features_) n_features_ = ind;
+		}
+		total_count_++;
+		};
+        model->set_sv(instances_);   
         return ;
     }
 
@@ -344,10 +347,11 @@ extern "C" {
         }
     }
 
-    void sparse_decision(int row_size, float* val, int* row_ptr, int* col_ptr, SvmModel *model, int value_size, float* dec_value){
+    void sparse_decision(int row_size, float* val, int* row_ptr, int* col_ptr, SvmModel *model, int value_size, float* dec_value, int sv_row_size, float* sv_val, int* sv_row_ptr, int* sv_col_ptr){
         DataSet predict_dataset;
         predict_dataset.load_from_sparse(row_size, val, row_ptr, col_ptr, (float *)NULL, (float_type *)NULL);
-        model->predict(predict_dataset.instances(), -1);
+        DataSet::node2d support_vectors = model->genSV(sv_row_size,sv_val, sv_row_ptr,sv_col_ptr);
+        model->predict(predict_dataset.instances(), support_vectors, -1);
         SyncArray<float_type> dec_value_array(value_size);
         dec_value_array.copy_from(model->get_dec_value());
         float_type *dec_value_ptr = dec_value_array.host_data();
@@ -356,10 +360,11 @@ extern "C" {
         }
     }
 
-    void dense_decision(int row_size, int features, float* data, SvmModel *model, int value_size, float* dec_value){
+    void dense_decision(int row_size, int features, float* data, SvmModel *model, int value_size, float* dec_value, int sv_row_size, float* sv_val, int* sv_row_ptr, int* sv_col_ptr){
         DataSet predict_dataset;
         predict_dataset.load_from_dense(row_size, features, data, (float*) NULL, (float_type*)NULL);
-        model->predict(predict_dataset.instances(), -1);
+        DataSet::node2d support_vectors = model->genSV(sv_row_size,sv_val, sv_row_ptr,sv_col_ptr);
+        model->predict(predict_dataset.instances(),support_vectors,-1);
         //SyncArray<float_type> dec_value_array(value_size);
         //dec_value_array.copy_from(model->get_dec_value());
         const SyncArray<float_type>& dec_value_array = model->get_dec_value();

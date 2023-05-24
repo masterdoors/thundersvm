@@ -12,19 +12,13 @@ if (USE_CUDA)
     list(APPEND SRC ${SRC_KERNEL})
     cuda_add_library(${PROJECT_LIB_NAME} ${SRC})
     target_link_libraries(${PROJECT_LIB_NAME} ${CUDA_cusparse_LIBRARY} OpenMP::OpenMP_CXX ${ZLIB_LIBRARIES})
-    cuda_add_executable(${PROJECT_NAME}-train thundersvm-train.cpp ${COMMON_INCLUDES})
-    cuda_add_executable(${PROJECT_NAME}-predict thundersvm-predict.cpp ${COMMON_INCLUDES})
 else ()
     file(GLOB SRC_KERNEL kernel/*.cpp)
     list(APPEND SRC ${SRC_KERNEL})
     add_library(${PROJECT_LIB_NAME} ${SRC})
     target_link_libraries(${PROJECT_LIB_NAME} OpenMP::OpenMP_CXX ${ZLIB_LIBRARIES})
-    add_executable(${PROJECT_NAME}-train thundersvm-train.cpp ${COMMON_INCLUDES})
-    add_executable(${PROJECT_NAME}-predict thundersvm-predict.cpp ${COMMON_INCLUDES})
 endif ()
 
-target_link_libraries(${PROJECT_NAME}-train ${LINK_LIBRARY} ${PROJECT_LIB_NAME})
-target_link_libraries(${PROJECT_NAME}-predict ${LINK_LIBRARY} ${PROJECT_LIB_NAME})
 
 # Export the package for use from the build tree
 export(TARGETS ${PROJECT_NAME} NAMESPACE XComp:: FILE cmake/${PROJECT_NAME}Targets.cmake)
@@ -40,10 +34,6 @@ configure_package_config_file(
     ${CMAKE_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/cmake/${PROJECT_NAME}Config.cmake
     INSTALL_DESTINATION lib/cmake/)
-
-install(TARGETS ${PROJECT_NAME}-train ${PROJECT_NAME}-predict
-    RUNTIME DESTINATION bin
-    BUNDLE DESTINATION bin)
 
 install(TARGETS ${PROJECT_NAME}
     EXPORT ${PROJECT_NAME}Targets

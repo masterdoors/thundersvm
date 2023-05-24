@@ -295,12 +295,12 @@ class SvmModel(ThundersvmBase):
 
         return X
 
-    def predict(self, X):
+    def predict(self, X,support_vectors):
         X = self._validate_for_predict(X)
         predict = self._sparse_predict if self._sparse else self._dense_predict
-        return predict(X)
+        return predict(X,support_vectors)
 
-    def predict_proba(self, X):
+    def predict_proba(self, X,support_vectors):
         n_classes = (c_int * 1)()
         thundersvm.get_n_classes(c_void_p(self.model), n_classes)
         self.n_classes = n_classes[0]
@@ -313,9 +313,9 @@ class SvmModel(ThundersvmBase):
             self.predict_pro_ptr = (c_float * size)()
             X = self._validate_for_predict(X)
             if self._sparse:
-                self._sparse_predict(X)
+                self._sparse_predict(X,support_vectors)
             else:
-                self._dense_predict(X)
+                self._dense_predict(X,support_vectors)
             # size = X.shape[0] * self.n_classes
             # self.predict_pro_ptr = (c_float * size)()
             # X = np.asarray(X, dtype=np.float64, order='C')
@@ -336,7 +336,7 @@ class SvmModel(ThundersvmBase):
                 .reshape((samples, self.n_classes))
             return self.predict_prob
 
-    def _dense_predict(self, X):
+    def _dense_predict(self, X, support_vector):
 
         self.predict_label_ptr = (c_float * X.shape[0])()
         X = np.asarray(X, dtype=np.float64, order='C')
@@ -346,15 +346,24 @@ class SvmModel(ThundersvmBase):
 
         data = (c_float * X_1d.size)()
         data[:] = X_1d
+
+        sdata = (c_float * support_vector.data.size)()
+        sdata[:] = support_vector.data
+        sindices = (c_int * support_vector.indices.size)()
+        sindices[:] = support_vector.indices
+        sindptr = (c_int * support_vector.indptr.size)()
+        sindptr[:] = support_vector.indptr
+
         thundersvm.dense_predict(
             samples, features, data,
             c_void_p(self.model),
-            self.predict_label_ptr, self.verbose)
+            self.predict_label_ptr,
+            support_vector.shape[0], sdata, sindptr, sindices, self.verbose)
 
         self.predict_label = np.frombuffer(self.predict_label_ptr, dtype=np.float32)
         return self.predict_label
 
-    def _sparse_predict(self, X):
+    def _sparse_predict(self, X, support_vector):
         self.predict_label_ptr = (c_float * X.shape[0])()
         data = (c_float * X.data.size)()
         data[:] = X.data
@@ -362,10 +371,21 @@ class SvmModel(ThundersvmBase):
         indices[:] = X.indices
         indptr = (c_int * X.indptr.size)()
         indptr[:] = X.indptr
+
+        sdata = (c_float * support_vector.data.size)()
+        sdata[:] = support_vector.data
+        sindices = (c_int * support_vector.indices.size)()
+        sindices[:] = support_vector.indices
+        sindptr = (c_int * support_vector.indptr.size)()
+        sindptr[:] = support_vector.indptr
+
         thundersvm.sparse_predict(
             X.shape[0], data, indptr, indices,
             c_void_p(self.model),
-            self.predict_label_ptr, self.verbose)
+            self.predict_label_ptr,
+            support_vector.shape[0], sdata, sindptr, sindices, self.verbose)
+
+        #int row_size, float* val, int* row_ptr, int* col_ptr, SvmModel *model, float* predict_label, int sv_row_size, float* sv_val, int* sv_row_ptr, int* sv_col_ptr, int verbose)    
 
         self.predict_label = np.frombuffer(self.predict_label_ptr, dtype=np.float32)
         return self.predict_label

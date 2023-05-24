@@ -91,8 +91,7 @@ vector<float_type> SvmModel::predict(const DataSet::node2d &instances, const Dat
     float_type* dec_values_host = dec_values.host_data();
     vector<float_type> dec_values_vec(dec_values.size());
     memcpy(dec_values_vec.data(), dec_values_host, dec_values.size() * sizeof(float_type));
-    sv.clear();
-    sv.shrink_to_fit();
+    DataSet::node2d().swap(sv);
     return dec_values_vec;
 }
 
@@ -308,8 +307,26 @@ void SvmModel::set_sv(DataSet::node2d lsv){
     sv = lsv;
 }
 
-const DataSet::node2d &SvmModel::genSV(int sv_row_size, float* sv_val, int* sv_row_ptr, int* sv_col_ptr) const{
-//TODO
+const DataSet::node2d &SvmModel::genSV(int row_size, float* val, int* row_ptr, int* col_ptr) const{
+        DataSet::node2d instances_; 
+	    instances_.clear();
+	    int total_count_ = 0;
+	    int n_features_ = 0;
+	    for(int i = 0; i < row_size; i++){
+		int ind;
+		float  v;
+
+		instances_.emplace_back();
+		for(int i = row_ptr[total_count_]; i < row_ptr[total_count_ + 1]; i++){
+		    ind = col_ptr[i];
+				ind++;			//convert to one-based format
+		    v = val[i];
+		    instances_[total_count_].emplace_back(ind, v);
+		    if(ind > n_features_) n_features_ = ind;
+		}
+		total_count_++;
+            };   
+        return instances_;  
 };
 
 const SyncArray<int> &SvmModel::get_n_sv() const {
