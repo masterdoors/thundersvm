@@ -307,8 +307,9 @@ void SvmModel::set_sv(DataSet::node2d lsv){
     sv = lsv;
 }
 
-const DataSet::node2d &SvmModel::genSV(int row_size, float* val, int* row_ptr, int* col_ptr) const{
-        DataSet::node2d instances_; 
+void SvmModel::genSV(int row_size, float* val, int* row_ptr, int* col_ptr,  DataSet::node2d &instances_) const{
+        std::cout << "genSV. row size=" << row_size << "\n";
+
 	    instances_.clear();
 	    int total_count_ = 0;
 	    int n_features_ = 0;
@@ -317,16 +318,21 @@ const DataSet::node2d &SvmModel::genSV(int row_size, float* val, int* row_ptr, i
 		float  v;
 
 		instances_.emplace_back();
+                std::cout << "genSV. col ends at " << row_ptr[total_count_ + 1] << "\n";
+
 		for(int i = row_ptr[total_count_]; i < row_ptr[total_count_ + 1]; i++){
 		    ind = col_ptr[i];
 				ind++;			//convert to one-based format
 		    v = val[i];
 		    instances_[total_count_].emplace_back(ind, v);
+                    std::cout << "set " << total_count_ << ", "<< ind << ", "<< v << "\n";
+
 		    if(ind > n_features_) n_features_ = ind;
 		}
 		total_count_++;
             };   
-        return instances_;  
+
+        std::cout << "genSV is finished: " << instances_.size() << "\n";
 };
 
 const SyncArray<int> &SvmModel::get_n_sv() const {

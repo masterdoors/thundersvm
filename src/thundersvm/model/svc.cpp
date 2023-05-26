@@ -6,6 +6,8 @@
 #include <thundersvm/kernel/smo_kernel.h>
 #include <thundersvm/model/svc.h>
 #include <thundersvm/solver/csmosolver.h>
+#include <iostream>
+
 
 using std::ofstream;
 using std::endl;
@@ -39,9 +41,12 @@ void SVC::model_setup(const DataSet &dataset, SvmParam &param) {
 }
 
 void SVC::train(const DataSet &dataset, SvmParam param) {
+    std::cout << "svc model_train started\n";
     DataSet dataset_ = dataset;
     dataset_.group_classes();
     model_setup(dataset_, param);
+
+    std::cout << "svc model_setup is finished\n";
 
     vector<SyncArray<float_type>> alpha(n_binary_models);
     vector<bool> is_sv(dataset_.n_instances(), false);
@@ -49,6 +54,7 @@ void SVC::train(const DataSet &dataset, SvmParam param) {
     int k = 0;
     for (int i = 0; i < n_classes; ++i) {
         for (int j = i + 1; j < n_classes; ++j) {
+            std::cout << "train binary " << i << j << "\n";
             train_binary(dataset_, i, j, alpha[k], rho.host_data()[k]);
             vector<int> original_index = dataset_.original_index(i, j);
             CHECK_EQ(original_index.size(), alpha[k].size());
@@ -60,6 +66,10 @@ void SVC::train(const DataSet &dataset, SvmParam param) {
         }
     }
 
+    std::cout << "binary training is finished\n";
+
+
+    n_total_sv = 0;
     for (int i = 0; i < dataset_.n_classes(); ++i) {
         vector<int> original_index = dataset_.original_index(i);
         DataSet::node2d i_instances = dataset_.instances(i);
@@ -67,13 +77,17 @@ void SVC::train(const DataSet &dataset, SvmParam param) {
         for (int j = 0; j < i_instances.size(); ++j) {
             if (is_sv[original_index[j]]) {
                 n_sv_data[i]++;
+                n_total_sv++;
                 //sv.push_back(i_instances[j]);
                 sv_indices.push_back(original_index[j]);
             }
         }
     }
 
-    n_total_sv = sv.size();
+    //n_total_sv = sv.size();
+
+    std::cout  << "total unique sv = " << n_total_sv << "\n";
+
     LOG(INFO) << "#total unique sv = " << n_total_sv;
     coef.resize((n_classes - 1) * n_total_sv);
 
@@ -106,6 +120,9 @@ void SVC::train(const DataSet &dataset, SvmParam param) {
             k++;
         }
     }
+
+    std::cout  << "coef data is filled \n";
+
 
     ///TODO: Use coef instead of alpha_data to compute linear_coef_data
     if(param.kernel_type == SvmParam::LINEAR){
@@ -141,10 +158,12 @@ void SVC::train(const DataSet &dataset, SvmParam param) {
         probB.resize(n_binary_models);
         probability_train(dataset_);
     }
-
+   std::cout << "svc model train finished\n";
 }
 
 void SVC::train_binary(const DataSet &dataset, int i, int j, SyncArray<float_type> &alpha, float_type &rho) {
+    std::cout << "svc model start binary train\n";
+
     DataSet::node2d ins = dataset.instances(i, j);//get instances of class i and j
     vector<float_type>  weights_v = dataset.weights(i, j);
     SyncArray<float_type> weights(ins.size());
@@ -171,7 +190,13 @@ void SVC::train_binary(const DataSet &dataset, int i, int j, SyncArray<float_typ
     int ws_size = get_working_set_size(ins.size(), k_mat.n_features());
     CSMOSolver solver;
 
+    std::cout << "svc binary all parameters are prepared\n";
+
+
     solver.solve(k_mat, y, alpha, rho, f_val, param.epsilon, weights, param.C * c_weight[i], param.C * c_weight[j], ws_size, max_iter);
+
+
+    std::cout << "binary train is finished. lt's fill alpha \n";
 
     LOG(INFO) << "rho = " << rho;
     int n_sv = 0;
@@ -185,10 +210,13 @@ void SVC::train_binary(const DataSet &dataset, int i, int j, SyncArray<float_typ
 }
 
 vector<float_type> SVC::predict(const DataSet::node2d &instances, const DataSet::node2d &support_vectors, int batch_size) {
+    std::cout << "svc predict is started\n";
     set_sv(support_vectors);
     dec_values.resize(instances.size() * n_binary_models);
     predict_dec_values(instances, dec_values, batch_size);
     DataSet::node2d().swap(sv);
+    std::cout << "svc predict is finished\n";
+
     return predict_label(dec_values, instances.size());
 }
 

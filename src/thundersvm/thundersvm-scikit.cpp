@@ -9,6 +9,9 @@
 #include <thundersvm/util/metric.h>
 #include "thundersvm/cmdparser.h"
 #include <omp.h>
+
+#include <iostream>
+
 using std::fstream;
 using std::stringstream;
 
@@ -121,6 +124,8 @@ extern "C" {
                 param_cmd.weight_label[i] = weight_label[i];
             }
         }
+
+        std::cout << "cpp_reached sparse train..\n";
         model->train(train_dataset, param_cmd);
         LOG(INFO) << "training finished";
         n_features[0] = train_dataset.n_features();
@@ -135,7 +140,8 @@ extern "C" {
         DataSet predict_dataset;
         predict_dataset.load_from_sparse(row_size, val, row_ptr, col_ptr, (float *)NULL,(float_type *)NULL);
         vector<float_type> predict_y;
-        DataSet::node2d support_vectors = model->genSV(sv_row_size,sv_val, sv_row_ptr,sv_col_ptr);
+        DataSet::node2d support_vectors = DataSet::node2d ();
+        model->genSV(sv_row_size,sv_val, sv_row_ptr,sv_col_ptr, support_vectors);
 
         predict_y = model->predict(predict_dataset.instances(), support_vectors, -1);
         for (int i = 0; i < predict_y.size(); ++i) {
@@ -230,6 +236,7 @@ extern "C" {
                 param_cmd.weight_label[i] = weight_label[i];
             }
         }
+        std::cout << "cpp_reached dense train..\n";
 
         model->train(train_dataset, param_cmd);
         LOG(INFO) << "training finished";
@@ -239,6 +246,9 @@ extern "C" {
     }
 
     int dense_predict(int row_size, int features, float* data, SvmModel *model, float* predict_label, int sv_row_size, float* sv_val, int* sv_row_ptr, int* sv_col_ptr,int verbose){
+        std::cout << "cpp_reached dense predict..\n";
+
+
         if(verbose)
             el::Loggers::reconfigureAllLoggers(el::ConfigurationType::Enabled, "true");
         else
@@ -246,7 +256,15 @@ extern "C" {
         DataSet predict_dataset;
         predict_dataset.load_from_dense(row_size, features, data, (float*) NULL,(float_type*)NULL);
         vector<float_type> predict_y;
-        DataSet::node2d support_vectors = model->genSV(sv_row_size,sv_val, sv_row_ptr,sv_col_ptr);
+
+        std::cout << "cpp_ dataset is loaded..\n";
+
+        DataSet::node2d support_vectors = DataSet::node2d ();
+
+        model->genSV(sv_row_size,sv_val, sv_row_ptr,sv_col_ptr, support_vectors);
+
+        std::cout << "cpp_SV are loaded..\n";
+
         predict_y = model->predict(predict_dataset.instances(), support_vectors, -1);
         for (int i = 0; i < predict_y.size(); ++i) {
             predict_label[i] = predict_y[i];
@@ -350,7 +368,9 @@ extern "C" {
     void sparse_decision(int row_size, float* val, int* row_ptr, int* col_ptr, SvmModel *model, int value_size, float* dec_value, int sv_row_size, float* sv_val, int* sv_row_ptr, int* sv_col_ptr){
         DataSet predict_dataset;
         predict_dataset.load_from_sparse(row_size, val, row_ptr, col_ptr, (float *)NULL, (float_type *)NULL);
-        DataSet::node2d support_vectors = model->genSV(sv_row_size,sv_val, sv_row_ptr,sv_col_ptr);
+        DataSet::node2d support_vectors = DataSet::node2d ();
+
+        model->genSV(sv_row_size,sv_val, sv_row_ptr,sv_col_ptr, support_vectors);
         model->predict(predict_dataset.instances(), support_vectors, -1);
         SyncArray<float_type> dec_value_array(value_size);
         dec_value_array.copy_from(model->get_dec_value());
@@ -363,7 +383,9 @@ extern "C" {
     void dense_decision(int row_size, int features, float* data, SvmModel *model, int value_size, float* dec_value, int sv_row_size, float* sv_val, int* sv_row_ptr, int* sv_col_ptr){
         DataSet predict_dataset;
         predict_dataset.load_from_dense(row_size, features, data, (float*) NULL, (float_type*)NULL);
-        DataSet::node2d support_vectors = model->genSV(sv_row_size,sv_val, sv_row_ptr,sv_col_ptr);
+        DataSet::node2d support_vectors = DataSet::node2d ();
+
+        model->genSV(sv_row_size,sv_val, sv_row_ptr,sv_col_ptr, support_vectors);
         model->predict(predict_dataset.instances(),support_vectors,-1);
         //SyncArray<float_type> dec_value_array(value_size);
         //dec_value_array.copy_from(model->get_dec_value());

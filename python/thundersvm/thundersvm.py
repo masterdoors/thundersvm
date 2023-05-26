@@ -89,6 +89,7 @@ class SvmModel(ThundersvmBase):
             thundersvm.model_free(c_void_p(self.model))
 
     def fit(self, X, y, sample_weights=None):
+        print("SVM fit....")
         if self.model is not None:
             thundersvm.model_free(c_void_p(self.model))
             self.model = None
@@ -209,6 +210,7 @@ class SvmModel(ThundersvmBase):
         n_features = (c_int * 1)()
         n_classes = (c_int * 1)()
         self._train_succeed = (c_int * 1)()
+        print("Dense fit")
         thundersvm.dense_model_scikit(
             samples, features, data, label, solver_type,
             kernel_type, self.degree, c_float(self._gamma), c_float(self.coef0),
@@ -267,6 +269,8 @@ class SvmModel(ThundersvmBase):
         n_features = (c_int * 1)()
         n_classes = (c_int * 1)()
         self._train_succeed = (c_int * 1)()
+ 
+        print("Sparse fit") 
         thundersvm.sparse_model_scikit(
             X.shape[0], data, indptr, indices, label, solver_type,
             kernel_type, self.degree, c_float(self._gamma), c_float(self.coef0),
@@ -298,7 +302,7 @@ class SvmModel(ThundersvmBase):
     def predict(self, X,support_vectors):
         X = self._validate_for_predict(X)
         predict = self._sparse_predict if self._sparse else self._dense_predict
-        return predict(X,support_vectors)
+        return predict(X,support_vectors[self.support_])
 
     def predict_proba(self, X,support_vectors):
         n_classes = (c_int * 1)()

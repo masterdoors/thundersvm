@@ -74,7 +74,7 @@ public:
     //return sv
     const DataSet::node2d &svs() const;
 
-    const DataSet::node2d &genSV(int row_size, float* val, int* row_ptr, int* col_ptr) const;
+    void genSV(int row_size, float* val, int* row_ptr, int* col_ptr, DataSet::node2d &instances_) const;
 
     //set sv 
     void set_sv(DataSet::node2d lsv);
